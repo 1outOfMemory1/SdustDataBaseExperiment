@@ -1,0 +1,58 @@
+select * from table1 where id = 1;
+create database abcd charset utf8mb4;
+show databases;
+create table student(
+    id int,
+    name varchar,
+    age int,
+    primary key (id,name)
+)
+
+create table               student                      (
+              id int,
+     name varchar,
+     age int,
+    primary key (id,name)
+);
+
+
+create table student(
+    id int  ,
+    name varchar  ,
+    age int  ,
+    school varchar,
+    home varchar not null,
+    aadasf varchar,
+    primary key (id,name),
+    foreign key (age) references test(age),
+    foreign key (name) references test(name),
+    unique key (school,name)
+);
+
+create table student(sno int,name varchar);
+create table student(sno int not null,name varchar);
+create table student(sno int not null,name varchar not null);
+create table student(sno int not null,name varchar not null, primary key (sno));
+create table student(sno int not null,name varchar not null, primary key (sno,name));
+create table student(sno int not null,name varchar not null, unique key (sno,name));
+create table student(sno int not null,name varchar not null,  foreign key (name) references test(name));
+
+
+create table teacher(
+    eno int,
+    ename varchar not null,
+    job varchar,
+    sal int,
+    deduct varchar,
+    deptno int,
+    primary key (eno)
+);
+insert into teacher values(123,'张三','教授',20000,'计算机学院',12);
+insert into teacher (eno,job,sal,deduct,deptno)  value(666,'讲师',10000,'机电学院',1);
+
+
+insert into abcd values(123,'asfdasdfasfd');
+
+
+insert into student (name,id) value('jack',30);
+insert into student values('jack',30);

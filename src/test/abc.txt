@@ -1,0 +1,14 @@
+student(
+    id int  ,
+    name varchar  ,
+    age int  ,
+    school varchar not null,
+    home varchar not null,
+    aad varchar,
+    primary key (id,name),
+    foreign key (age) references test(age),
+    foreign key (name) references test(name),
+    unique key (school,name)
+)
+
+
