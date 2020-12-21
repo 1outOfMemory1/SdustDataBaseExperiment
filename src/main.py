@@ -159,6 +159,7 @@ def myDDLFunction(currentIndex: int, DDl: str, target: str, tokens):
             print("VIEW")
 
 
+# 只能是 insert delete update select
 def myDMLFunction(currentIndex, tokens):
     if not checkCurrentDatabase():
         print("请先选择数据库")
@@ -167,7 +168,8 @@ def myDMLFunction(currentIndex, tokens):
         # print("Insert")
         Table.tableInsert(currentDatabase, tokens)
     elif afterParseSqlTokens[currentIndex].value.upper() == "DELETE":
-        print("DELETE")
+        Table.tableDelete(currentDatabase, tokens)
+        # print("DELETE")
     elif afterParseSqlTokens[currentIndex].value.upper() == "UPDATE":
         print("update")
     elif afterParseSqlTokens[currentIndex].value.upper() == "SELECT":
@@ -196,7 +198,6 @@ if __name__ == "__main__":
                 # print(afterParseSqlTokens[index].value) 里边可能是database 、table 、 user 、view 、function、trigger 、procedure
                 tempObject = afterParseSqlTokens[index].value  # 临时存储一下子
                 myDDLFunction(index, tempDDL, tempObject, afterParseSqlTokens)
-
             if str(afterParseSqlTokens[index].ttype) == "Token.Keyword":  # 说明是 use
                 if afterParseSqlTokens[index].value.upper() == "USE":
                     while str(afterParseSqlTokens[index].ttype) != "None":  # 后边一定跟着 要使用的数据库名字

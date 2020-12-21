@@ -56,3 +56,6 @@ insert into abcd values(123,'asfdasdfasfd');
 
 insert into student (name,id) value('jack',30);
 insert into student values('jack',30);
+
+
+delete  from student where home != 'shandong'

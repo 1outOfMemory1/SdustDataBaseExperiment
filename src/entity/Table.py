@@ -204,6 +204,20 @@ def tableInsert(currentDatabase, token):
     judgeAndInsert(src, columnNameArray, valueArray,allArray)
 
 
+def tableDelete(database: str, token):
+    tokenStr = ""  # 直接提取出来所有的sql指令  进行正则匹配
+    for ele in token:
+        tokenStr += ele.normalized
+    print(tokenStr)
+
+    p1 = re.search(r'DELETE( +)FROM( +)(.*?)( +)where(.*)', tokenStr)
+    print(p1.group(0))  # DELETE FROM student where home != 'shandong' or id = 30
+    print(p1.group(3))  # student
+    print(p1.group(5))  # home != 'shandong' or id = 30
+    pass
+
+
+
 class Table:
     tableName: str = ""
     createTime: time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
