@@ -1,5 +1,5 @@
 # import numpy as np
-# import pandas as pd
+import pandas as pd
 # df = pd.DataFrame([" aa ", "bb "])
 # # testArray = np.array()
 # # print(type(testArray))
@@ -19,10 +19,21 @@
 # for ele in array:
 #     print(ele)
 
-import random
-print(random.randrange(1, 10))  # 返回1-10 之间的一个随机数不包括10
-print(random.randint(1, 10))  # 返回1-10 之间的一个随机数 包括10
-print(random.randrange(0, 10, 2))  # 返回0-10 当中的偶数 2是步长
-print(random.random())  # 返回一个0-1之间的随机浮点数
-print(random.choice("abcd!@#$%"))  # 返回一个给定数据集合中的随机字符
-print(random.sample("abcdefg", 3))  # 返回一个list ['a', 'e', 'c']
+# abc = "$$$abc$"
+# print(abc)
+# print(abc.strip("$"))
+
+
+# abc = "woshiabc"
+# if 3>2:
+#     abc = "asfd"
+# print(abc)
+# array = ['jack', 30]
+# print(array[1])
+
+
+df1 = pd.DataFrame([[1,11,111],[2,22,222],[3,33,333]],columns=['id','data','comment'])
+df2 = pd.DataFrame([[0,00,000],[1,11,111],[2,22,222],[4,44,444]],columns=['id','data','comment'])
+union_result = pd.merge(df1, df2, how='outer')
+union_result = pd.merge(df1, union_result, how='outer')
+print(union_result)

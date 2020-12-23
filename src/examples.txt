@@ -15,6 +15,15 @@ create table               student                      (
     primary key (id,name)
 );
 
+create table student(sno int,name varchar);
+create table student(sno int not null,name varchar);
+insert into student values(30,'jack');
+create table student(sno int not null,name varchar not null);
+create table student(sno int not null,name varchar not null, primary key (sno));
+create table student(sno int not null,name varchar not null, primary key (sno,name));
+create table student(sno int not null,name varchar not null, unique key (sno,name));
+create table student(sno int not null,name varchar not null,  foreign key (name) references test(name));
+
 
 create table student(
     id int  ,
@@ -22,20 +31,17 @@ create table student(
     age int  ,
     school varchar,
     home varchar not null,
-    aadasf varchar,
-    primary key (id,name),
+    primary key ( id  ,   name   ),
     foreign key (age) references test(age),
     foreign key (name) references test(name),
     unique key (school,name)
 );
+insert into student values(2011,张三,18,123,shandong);
+insert into student  (id,name) value(2011,'李四');
+insert into student (name,id) value('jack',30);
 
-create table student(sno int,name varchar);
-create table student(sno int not null,name varchar);
-create table student(sno int not null,name varchar not null);
-create table student(sno int not null,name varchar not null, primary key (sno));
-create table student(sno int not null,name varchar not null, primary key (sno,name));
-create table student(sno int not null,name varchar not null, unique key (sno,name));
-create table student(sno int not null,name varchar not null,  foreign key (name) references test(name));
+
+
 
 
 create table teacher(
@@ -47,15 +53,29 @@ create table teacher(
     deptno int,
     primary key (eno)
 );
+select * from student where id > 2019;
+
+
+
 insert into teacher values(123,'张三','教授',20000,'计算机学院',12);
 insert into teacher (eno,job,sal,deduct,deptno)  value(666,'讲师',10000,'机电学院',1);
+delete  from teacher;
 
 
-insert into abcd values(123,'asfdasdfasfd');
+
+delete  from student;
+delete  from student where home != shandong1;
+DELETE  FROM student where home = shandong3 or id = 2011;
+delete  from student where          home!=     'shandong       and          id  =  3  or  home  !=  shandong';
 
 
-insert into student (name,id) value('jack',30);
-insert into student values('jack',30);
+select * from student order by sno,;
+SELECT * FROM student where sno<= 5;
+SELECT * FROM student where sno= 5;
+SELECT * FROM student where sno != 1 and sno != 2 or sno != 3;
+SELECT * FROM student where sno< 20 and sno > 5 and sno >=10 and  sno > 17 or sno < 12;
+select * from teacher;
+select * from abcd;
+select * from student order by id asc, name desc;
 
-
-delete  from student where home != 'shandong'
+update student set name=adfasfas,id=9999 where age=21;

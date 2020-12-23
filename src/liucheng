@@ -1,0 +1,31 @@
+1. 建表
+
+create table student(
+    sno int  ,
+    sname varchar  ,
+    age int  ,
+    school varchar,
+    home varchar not null,
+    primary key ( sno  ,   sname   ),
+    foreign key (name) references test(name),
+    unique key (school,sname)
+);
+
+2. 插入
+insert into student values(2011,张三,18,school3,shandong1);
+insert into student values(2011,张三,18,school3,shandong1);
+insert into student values(2012,张三1,19,school1,shandong6);
+insert into student values(2013,张三2,15,school99,shandong3);
+insert into student values(2014,张三3,12,school1,shandong2);
+
+3. 删除
+
+delete from student where sno = 2011;
+
+4. 查询
+select * from student;
+select * from student where sno >= 2012 and sno = 2013 or sno = 2014;
+select * from student where sno >= 2012 and school != school99;
+
+5.更新
+update student set sno = 9999, school= 测试学校 where sno = 2012;

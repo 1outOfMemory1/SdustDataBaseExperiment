@@ -3,8 +3,11 @@ import re
 # file = open("abc.txt")
 # tempStr = file.read()
 # tempStr = tempStr.replace("\n", "")
-tempStr = "     id int  ,     name varchar  ,     age int  ,     school varchar not null,     home varchar not null,     aad varchar,     primary key (id,name),     foreign key (age) references test(age),     foreign key (name) references test(name),     unique key (school,name) "
+tempStr = "     id int  ,     name varchar  ,     age int  ,     school varchar not null,     home varchar not     null,     aad varchar,     primary key (id,name),     foreign key (age) references test(age),     foreign key (name) references test(name),     unique key (school,name) "
 
+tempStr = re.sub(r" +", " ", tempStr)
+
+print(tempStr)
 tempStr =re.search(r"[(](.*)[)]", tempStr).group(1)
 print(tempStr + "\n#####################")
 
@@ -30,10 +33,10 @@ print(p2.group(4).strip() + " 被参考的表名")
 print(p2.group(5).strip() + " 外表的键")
 tempStr = re.sub(r"foreign key(.*?)[(](.*?)[)](.*?)references(.*?)[(](.*?)[)]", "", tempStr)
 
-array = tempStr.split(",")
-# print(tempStr)
-for ele in array:
-    print(ele)
+# array = tempStr.split(",")
+# # print(tempStr)
+# for ele in array:
+#     print(ele)
 
 
 # ele = "home               varchar not             null"

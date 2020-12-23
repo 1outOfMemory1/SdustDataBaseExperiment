@@ -8,6 +8,7 @@ attributeNameArray = ['tableName', 'createTime', 'lastModifyTime', 'owner', 'row
 remarksList = ['表名', '创建时间', '最后修改时间', '所有者', '数据行数', '字段数', '主键',
                '唯一键', '外键', '不能为空字段', '索引字段', '数据类型']
 
+
 # 这个函数是自己的拼接函数   str2TableClass 中会调用
 def myConcat(array: list, separator: str):
     temp = ""
@@ -29,7 +30,11 @@ def str2TableClass(tempStr: str, tableName: str):
     # print(p1.group(0))
     # print(p1.group(2) + " 主键值")
     if p1 is not None:
-        primaryKey = p1.group(2)
+        primaryKey = p1.group(2).strip()
+        primaryKeyList = primaryKey.split(",")
+        for index, ele in enumerate(primaryKeyList):
+            primaryKeyList[index] = ele.strip()
+        primaryKey = myConcat(primaryKeyList, ",")
         tempStr = re.sub(r"primary key(.*?)[(](.*?)[)]", "", tempStr)  # 删除primary key 防止影响到后边内容
 
     # unique key部分
@@ -75,7 +80,7 @@ def str2TableClass(tempStr: str, tableName: str):
 
     # myConcat是自己写的函数  将notNull的column拼接起来  形如 school,home
     notNullColumnStr = myConcat(notNullColumn, ",")
-
+    notNullColumnStr += "," + primaryKey  # 加上主键也不能为空
     # 拼接成形如 id#int,name#varchar,age#int,school#varchar,home#varchar,aad#varchar 的字符串
     # 前边是 字段名称 后边是字段类型 两者用#分割 不同字段之间用, 分割
     temp = ""
@@ -109,9 +114,7 @@ def tableInit(databaseLocation: str, databaseName: str, currentIndex: int, token
     # 引入writer 防止覆盖  这样可以向两个工作表(sheet)中写入信息
     src = databaseLocation + "\\" + databaseName.upper() + "\\" + tableName + ".xlsx"
     writer = pd.ExcelWriter(src, engine='openpyxl')
-
     initTableAttributeObject = str2TableClass(tempStr, tableName)
-
     tempArray = list(range(1, len(attributeNameArray) + 1))  # 索引列需要
     s1 = pd.Series(tempArray, index=tempArray, name="index")  # 索引列 一共需要12个属性
     s2 = pd.Series(attributeNameArray, index=tempArray, name="attribute")  # 属性名列
@@ -130,20 +133,32 @@ def tableInit(databaseLocation: str, databaseName: str, currentIndex: int, token
 
 
 # 这个函数是进行完整性校验无误后 将数据写入到excel表中  tableInsert会调用
-def judgeAndInsert(src: str, aa: list, bb: list, all:list):
+def judgeAndInsert(src: str, aa: list, bb: list, all: list):
     # 注意这里的地址 还是相对于main.py 这个文件而言的  而不是相对于 本文件Table.py
     # print(aa)
     # print(bb)
+    # aa 是需要插入列表字段列表  bb是值
+
 
     writer = pd.ExcelWriter(src)
     dic = {}
     for index, ele in enumerate(bb):
-        dic[aa[index]] =  ele
+        dic[aa[index]] = ele
     attributeDf = pd.read_excel(writer, sheet_name="attribute")
     #  print(attributeDf)
     dataDf = pd.read_excel(writer, sheet_name="data", usecols=all)
     #  print(dataDf)
-    pd.set_option('display.max_columns', None)
+
+    notNullStrArray:list = attributeDf["value"].at[9].strip().split(",")
+    print(notNullStrArray)
+    # for ele in notNullStrArray:
+    #     if ele not in aa.:
+
+
+
+
+
+
     dataDf = dataDf.append(dic, ignore_index=True)
     attributeDf["value"].at[2] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())  # 更新时间
     attributeDf["value"].at[4] += 1  # 增加行数
@@ -151,6 +166,96 @@ def judgeAndInsert(src: str, aa: list, bb: list, all:list):
     dataDf.to_excel(writer, sheet_name="data", index=False)
     writer.save()
     writer.close()
+    print("插入成功")
+
+
+# 提取关键词 比如  id > 20  key是 id  algebraicSymbol 是 > 20是 value
+def getDataframeByRequirement(key, value, algebraicSymbol, dataframe: pd.DataFrame):
+    print(key)
+    print(value)
+    print(algebraicSymbol)
+    tempDataFrame = None
+    if algebraicSymbol == ">":
+        tempDataFrame = dataframe.loc[dataframe[key].apply(lambda xx: xx > int(value))]
+    if algebraicSymbol == ">=":
+        tempDataFrame = dataframe.loc[dataframe[key].apply(lambda xx: xx >= int(value))]
+    if algebraicSymbol == "<":
+        tempDataFrame = dataframe.loc[dataframe[key].apply(lambda xx: xx < int(value))]
+    if algebraicSymbol == "<=":
+        tempDataFrame = dataframe.loc[dataframe[key].apply(lambda xx: xx <= int(value))]
+    if algebraicSymbol == "=":
+        tempDataFrame = dataframe.loc[dataframe[key].apply(lambda xx: str(xx) == str(value))]
+    if algebraicSymbol == "!=":
+        tempDataFrame = dataframe.loc[dataframe[key].apply(lambda xx: str(xx) != str(value))]
+    return tempDataFrame
+
+
+# 根据表达式 得到一个字符串数组 里边有 tempList = [key, value, algebraicSymbol]
+def getKeyValueAndAlgebraicSymbol(expression: str):
+    key = ""
+    value = ""
+    algebraicSymbol = ""
+    if "=" in expression:
+        equalIndex = expression.index("=")
+        if expression[equalIndex - 1] == "!":
+            algebraicSymbol = "!="
+        elif expression[equalIndex - 1] == ">":
+            algebraicSymbol = ">="
+        elif expression[equalIndex - 1] == "<":
+            algebraicSymbol = "<="
+        else:
+            algebraicSymbol = "="
+    else:
+        if ">" in expression:
+            algebraicSymbol = ">"
+        elif "<" in expression:
+            algebraicSymbol = "<"
+    key = (expression.split(algebraicSymbol))[0].strip()
+    value = (expression.split(algebraicSymbol))[1].strip()
+    tempList = [key, value, algebraicSymbol]
+    return tempList
+
+
+# 根据where条件 拿到dataframe数据
+def parseWhereGetDf(src: str, whereStr: str):
+    dataDf = pd.read_excel(src, sheet_name="data")
+    # strTemp3 = "sno< 20 and sno > 5 and sno >=10 and  sno > 17 or sno < 12"
+    # strTemp4 = "sno > 17 or sno < 12 "
+    noOrDataDf = dataDf
+
+    if whereStr == "":
+        # print(dataDf)
+        return dataDf
+    else:
+        andSplitStrArray = re.split(r" and ", whereStr)
+        orList = []
+        for ele in andSplitStrArray:
+            if " or " in ele:
+                orSplitStrArray = re.split(r" or ", ele)
+                orDfList = []
+                # 拿到所有的or 中的表达式 做一个交集
+                for factor in orSplitStrArray:
+                    tempArray = getKeyValueAndAlgebraicSymbol(factor)
+                    OrDataDf = getDataframeByRequirement(tempArray[0], tempArray[1], tempArray[2], dataDf)
+                    orDfList.append(OrDataDf)
+                oneTempOrDf = orDfList[0]
+                # 取所有的并集 用or隔开的表达式的并集
+                for element in orDfList:
+                    oneTempOrDf = pd.merge(oneTempOrDf, element, how="outer")  # 取并集
+                orList.append(oneTempOrDf)
+            else:
+                tempArray = getKeyValueAndAlgebraicSymbol(ele)
+                key = tempArray[0]
+                value = tempArray[1]
+                algebraicSymbol = tempArray[2]
+                noOrDataDf = getDataframeByRequirement(key, value, algebraicSymbol, noOrDataDf)
+        finallyDf = noOrDataDf
+        # 举个例子  sno< 20 and sno > 5 and sno >=10 and  sno > 17 or sno < 12 and  sno > 17 or sno < 12
+        # orlist中有 2个元素  最终下方函数是对三个dataframe做交集
+        for ele in orList:
+            finallyDf = pd.merge(finallyDf, ele, how="inner")
+        # print(finallyDeleteDf)
+        return finallyDf
 
 
 # 外界会调用这个全局函数
@@ -201,21 +306,208 @@ def tableInsert(currentDatabase, token):
         for index in range(0, len(valueArray)):
             valueArray[index] = valueArray[index].strip().strip("'")
     # 调用插入函数  传入 表的路径 字段名称数组  值数组  所有字段数组
-    judgeAndInsert(src, columnNameArray, valueArray,allArray)
+    judgeAndInsert(src, columnNameArray, valueArray, allArray)
 
 
-def tableDelete(database: str, token):
+def handleDeleteInExcel(src: str, whereStr: str):
+    # print(src)
+    # print(whereStr)
+    # 读取数据
+    writer = pd.ExcelWriter(src)
+    attributeDf = pd.read_excel(writer, sheet_name="attribute")
+    dataDf = pd.read_excel(writer, sheet_name="data")
+    # print(attributeDf)
+    # print(dataDf)
+
+    if whereStr == "":
+        # 修改数据
+        dataDf.drop(dataDf.index, inplace=True)  # 删除所有数据
+        attributeDf["value"].at[4] = 0  # 把rowNumber数据行改成0 代表里面没有数据
+    else:
+        print(whereStr)
+        # 提取出关键信息 进行筛选
+        tempDf = parseWhereGetDf(src=src, whereStr=whereStr)
+        # print(dataDf)
+        print("删除了{}行".format(len(tempDf)))
+        print(tempDf)
+        dataDf = dataDf.append(tempDf)
+        dataDf = dataDf.drop_duplicates(subset=dataDf.columns, keep=False)
+        # print(dataDf)
+        attributeDf["value"].at[4] -= len(tempDf)  # 减少行数
+
+    # 写回数据
+    attributeDf.to_excel(writer, sheet_name="attribute", index=False)
+    dataDf.to_excel(writer, sheet_name="data", index=False)
+    writer.save()
+    writer.close()
+    print("删除成功")
+
+
+def tableDelete(currentDatabase: str, token):
     tokenStr = ""  # 直接提取出来所有的sql指令  进行正则匹配
     for ele in token:
         tokenStr += ele.normalized
     print(tokenStr)
 
-    p1 = re.search(r'DELETE( +)FROM( +)(.*?)( +)where(.*)', tokenStr)
-    print(p1.group(0))  # DELETE FROM student where home != 'shandong' or id = 30
-    print(p1.group(3))  # student
-    print(p1.group(5))  # home != 'shandong' or id = 30
-    pass
+    # 去除多余的空格
+    tokenStr = re.sub(r" +", " ", tokenStr)
+    tableName: str = ""
+    src: str = ""
+    whereStr: str = ""
+    # 两个分支 如果存在
+    if "where" in tokenStr:
+        p1 = re.search(r'DELETE FROM (.*?) where (.*)', tokenStr)
+        # print(p1.group(0))  # 全语句  DELETE FROM student where home != 'shandong' or id = 30
+        # print(p1.group(1))  # 表名 student
+        # print(p1.group(2))  # 条件 home != 'shandong' or id = 30
+        tableName = p1.group(1).strip()
+        whereStr = p1.group(2).strip()
+    else:
+        p2 = re.search(r'DELETE FROM (.*)', tokenStr)
+        # print(p2.group(0))  # DELETE FROM student
+        # print(p2.group(1))  # student
+        tableName = p2.group(1).strip()
+        whereStr = ""
+        print("你真的想要删除 {} 表中所有数据吗(yes/no)".format(tableName))
+        if "n" in input():
+            return
+    src = "databases/" + currentDatabase.upper() + "/" + tableName + ".xlsx"
+    handleDeleteInExcel(src, whereStr)
 
+
+# 处理orderby字句的   order by id asc, name desc;  返回列表如右侧  [['id', 'name'], [True, False]]
+def getListOfOrderBy(orderByStr: str):
+    print(orderByStr)
+    orderByKeyList = []
+    orderByValueList = []
+    tempArray1 = orderByStr.split(",")
+    for ele in tempArray1:
+        tempArray2 = ele.split()
+        orderByKeyList.append(tempArray2[0].strip())
+        if "asc" == tempArray2[1].strip():
+            orderByValueList.append(True)
+        else:
+            orderByValueList.append(False)
+    return [orderByKeyList, orderByValueList]
+
+
+def tableSelect(currentDatabase: str, token):
+    tokenStr = ""  # 直接提取出来所有的sql指令  进行正则匹配
+    for ele in token:
+        tokenStr += ele.normalized
+    # 去除多余的空格
+    tokenStr = re.sub(r" +", " ", tokenStr)
+    tableName: str = ""
+    src: str = ""
+    whereStr: str = ""
+    orderByList = None
+
+    # 处理 order by语句
+    if "ORDER BY" in tokenStr:
+        p3 = re.search("ORDER BY (.*)", tokenStr)
+        # print(p3.group(0))
+        # print(p3.group(1))
+        orderByStr = p3.group(1).strip()
+        orderByList = getListOfOrderBy(orderByStr)
+        print(orderByList)
+        tokenStr = re.sub(r" ORDER BY (.*)", "", tokenStr)
+    # 正则区分出表名
+    if "where" not in tokenStr:
+        p1 = re.search(r'SELECT (.*?) FROM (.*)', tokenStr)
+        # print(p1.group(0))  # SELECT * FROM student
+        # print(p1.group(1))  # *
+        # print(p1.group(2))  # student
+        tableName = p1.group(2)
+    else:
+        p2 = re.search(r'SELECT (.*?) FROM (.*?) where (.*)', tokenStr)
+        # print(p2.group(0))  # SELECT * FROM student where sno< 20 and sno > 5 and sno >=10 and  sno > 17 or sno < 12
+        # print(p2.group(1))  # *
+        # print(p2.group(2))  # student
+        # print(p2.group(3))  # sno< 20 and sno > 5 and sno >=10 and  sno > 17 or sno < 12
+        tableName = p2.group(2)
+        whereStr = p2.group(3)
+    src = "databases/" + currentDatabase.upper() + "/" + tableName + ".xlsx"
+    targetDataframe = parseWhereGetDf(src, whereStr)
+
+    if orderByList is not None:
+        targetDataframe.sort_values(by=orderByList[0], inplace=True, ascending=orderByList[1])
+    print(targetDataframe)
+
+
+# name=姓名测试,id=1
+def getListOfUpdateSet(updateStr: str):
+    print(updateStr)
+    updateKeyList = []
+    updateValueList = []
+    tempArray1 = updateStr.split(",")
+    for ele in tempArray1:
+        tempArray2 = ele.split("=")
+        updateKeyList.append(tempArray2[0].strip())
+        updateValueList.append(tempArray2[1].strip())
+    return [updateKeyList, updateValueList]
+
+
+def handleUpdateInExcel(src: str, whereStr: str, modifyStr: str):
+    writer = pd.ExcelWriter(src)
+    attributeDf = pd.read_excel(writer, sheet_name="attribute")
+    #  先删除然后再插入
+    tempDataframe: pd.DataFrame = parseWhereGetDf(src, whereStr)
+    print(tempDataframe)
+    handleDeleteInExcel(src, whereStr)  # 需要进行删完再读
+    dataDf: pd.DataFrame = pd.read_excel(writer, sheet_name="data")
+    updateList = getListOfUpdateSet(modifyStr)
+    # print(updateList)  # [['name', 'id'], ['姓名测试', '1']]
+    primaryKeyStr: str = attributeDf["value"].at[6].strip()  # 读出主键
+    primaryKeyList = primaryKeyStr.strip().split(",")
+    for index, ele in enumerate(primaryKeyList):
+        primaryKeyList[index] = ele.strip()
+
+    # print(primaryKeyList)  # 主键的列表
+    for index, ele in enumerate(updateList[0]):
+        tempDataframe[ele] = updateList[1][index]
+    # print(tempDataframe)
+
+    dataDf = dataDf.append(tempDataframe)  # 取并集
+    dataDf.sort_values(by=primaryKeyList)
+    print(dataDf)
+    attributeDf.to_excel(writer, sheet_name="attribute", index=False)
+    dataDf.to_excel(writer, sheet_name="data", index=False)
+    writer.save()
+    writer.close()
+
+
+def tableUpdate(currentDatabase: str, token):
+    tokenStr = ""  # 直接提取出来所有的sql指令  进行正则匹配
+    for ele in token:
+        tokenStr += ele.normalized
+    # 去除多余的空格
+    tokenStr = re.sub(r" +", " ", tokenStr)
+    tableName: str = ""
+    src: str = ""
+    whereStr: str = ""
+    modifyStr = ""
+    modifyList: list = []
+    if "where" not in tokenStr:
+        p2 = re.search(r'UPDATE (.*?) SET (.*)', tokenStr)
+        # print(p2.group(0))  # UPDATE my_teacher SET name=lucy
+        # print(p2.group(1))  # my_teacher
+        tableName = p2.group(1).strip()
+        # print(p2.group(2))  # name=lucy
+        modifyStr = p2.group(2).strip()
+    else:
+        p1 = re.search(r'UPDATE (.*?) SET (.*?) where (.*)', tokenStr)
+        # print(p1.group(0))  # UPDATE my_teacher SET name=lucy where age=30
+        # print(p1.group(1))  # my_teacher
+        tableName = p1.group(1).strip()
+        # print(p1.group(2))  # name=lucy
+        modifyStr = p1.group(2).strip()
+        # print(p1.group(3))  # age=30
+        whereStr = p1.group(3).strip()
+    src = "databases/" + currentDatabase.upper() + "/" + tableName + ".xlsx"
+    print(tableName)
+    print(modifyStr)
+    print(whereStr)
+    handleUpdateInExcel(src, whereStr, modifyStr)
 
 
 class Table:

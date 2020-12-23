@@ -1,4 +1,5 @@
 import sqlparse as sp
+import pandas as pd
 import getpass as gp
 import json
 import entity.Table as Table
@@ -38,6 +39,8 @@ def login():
 def getASentence():
     printHeader()  # 打印头部 yhnSql>
     temp = input()
+    if temp == "":
+        return None
     while temp[-1] != ";":  # 判断是不是输入完毕了 如果输入完毕了 肯定有分号结尾
         sqlSentences.append(temp)
         sqlSentences.append(" ")
@@ -171,12 +174,16 @@ def myDMLFunction(currentIndex, tokens):
         Table.tableDelete(currentDatabase, tokens)
         # print("DELETE")
     elif afterParseSqlTokens[currentIndex].value.upper() == "UPDATE":
-        print("update")
+        Table.tableUpdate(currentDatabase, tokens)
+        # print("update")
     elif afterParseSqlTokens[currentIndex].value.upper() == "SELECT":
-        print("Select")
+        # print("Select")
+        Table.tableSelect(currentDatabase, tokens)
 
 
 if __name__ == "__main__":
+    pd.set_option('display.max_rows', None)  # 显示所有列
+    pd.set_option('display.max_columns', None)
     # 登录验证 如果用户名和密码错误 无法进入系统
     # while True:
     #     if login():
@@ -184,6 +191,8 @@ if __name__ == "__main__":
     # 成功通过验证进入系统  进入默认的命令行界面
     while True:
         afterJoinSqlSentence = getASentence()  # 每次获取一个sql语句
+        if afterJoinSqlSentence is None:  # 判断一下什么也不输入的情况 否则会报错
+            continue
         # print(afterJoinSqlSentence)
         afterParseSqlTokens = getTokens(afterJoinSqlSentence)
         tempDDL = ""
