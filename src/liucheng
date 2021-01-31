@@ -1,3 +1,6 @@
+create database yhn;
+use yhn;
+
 1. 建表
 
 create table student(
@@ -8,24 +11,32 @@ create table student(
     home varchar not null,
     primary key ( sno  ,   sname   ),
     foreign key (name) references test(name),
-    unique key (school,sname)
+    unique key (school)
 );
 
 2. 插入
 insert into student values(2011,张三,18,school3,shandong1);
-insert into student values(2011,张三,18,school3,shandong1);
+insert into student (sname,home) value(张三,山东);     # 报错
+insert into student (sno,sname,home) value(2011,张三,山东);   # 报错 字段不能为空
+insert into student values(2011,张三,18,school3,shandong1);  # 报错主键重复
 insert into student values(2012,张三1,19,school1,shandong6);
 insert into student values(2013,张三2,15,school99,shandong3);
 insert into student values(2014,张三3,12,school1,shandong2);
 
 3. 删除
-
+delete from student;
 delete from student where sno = 2011;
 
 4. 查询
+select sno, sname from student order by sno desc;
+select sno,sname from student;
 select * from student;
 select * from student where sno >= 2012 and sno = 2013 or sno = 2014;
 select * from student where sno >= 2012 and school != school99;
 
 5.更新
 update student set sno = 9999, school= 测试学校 where sno = 2012;
+update student set sno = 2014, sname = 张三3 where sno = 2012;  #报错 主键重复
+
+
+create view aaa  as select * from student;

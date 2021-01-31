@@ -1,8 +1,12 @@
+import os
+import re
+
 import sqlparse as sp
 import pandas as pd
 import getpass as gp
 import json
 import entity.Table as Table
+import entity.view as view
 
 
 username = ""
@@ -10,9 +14,9 @@ password = ""
 
 loginInfo = ""
 databaseLocation = ".\\databases"
-currentDatabase = "abc"
+currentDatabase = ""
 sqlSentences = []
-
+mapOfView = {}
 
 def printHeader():
     print("yhnSql> ", end="")
@@ -56,14 +60,10 @@ def getASentence():
 
 
 def getTokens(sql):
-    stmts = sp.split(sql)
-    for stmt in stmts:
-        # 2.format格式化
-        print(sp.format(stmt, reindent=True, keyword_case="upper"))
-        # 3.解析SQL
-        stmt_parsed = sp.parse(stmt)
-        print(stmt_parsed[0].tokens)
-    return stmt_parsed[0].tokens
+    # 解析SQL
+    sql_parsed = sp.parse(sql)
+    return sql_parsed[0].tokens
+
 
 
 def myMkdir(path: str):
@@ -128,7 +128,70 @@ def myShowDatabases():
     file = open(databaseLocation + "\\" + "databasesDetail.txt")
     print("当前拥有的数据库有：")
     for line in file:
-        print(line)
+        print(line, end="")
+    print("请输入想要查看的数据库")
+    database = input()
+    for a, b, c in os.walk(databaseLocation + "\\" + database):  # a代表所在根目录;b代表根目录下所有文件夹(以列表形式存在);c代表根目录下所有文件
+        for i in c:
+            src = databaseLocation + "\\" + database + "\\" + i
+            print(i + "\n#############################")
+            print(pd.read_excel(src, sheet_name="attribute", index_col="attribute",
+                                usecols=["attribute", "value", "备注"]))
+            print("#############################")
+
+
+def myShowtable(tableName:str):
+    src = databaseLocation + "\\" + currentDatabase + "\\" +  tableName + ".xlsx"
+    print(pd.read_excel(src, sheet_name="attribute", index_col="attribute",
+                        usecols=["attribute", "value", "备注"]))
+
+
+def myShowIndex (indexName:str):
+    src = "./index" + "\\" + currentDatabase + "\\" + indexName
+    file = open(src).read()
+    print(file)
+
+
+def myShowView (viewName:str):
+    src = "./view" + "\\" + currentDatabase + "\\" + viewName
+    file = open(src).read()
+    print(file)
+
+
+def myShowFunction(tokens):
+    # print(tokens)
+    tokenStr = ""  # 直接提取出来所有的sql指令  进行正则匹配
+    for ele in tokens:
+        tokenStr += ele.normalized
+    print(tokenStr)
+    tokenStr = re.sub(r" +", " ", tokenStr)
+    # show databases;
+    # show table student;
+    # show index student;
+    # show view student;
+    p1 = re.search("SHOW (.*?) (.*)", tokenStr)
+    keyWord = ""
+    abcObject = ""
+    if p1 is not None:
+        print(p1.group(1))
+        print(p1.group(2))
+        keyWord = p1.group(1)
+        abcObject = p1.group(2)
+    else:
+        p2 = re.search("SHOW (.*)", tokenStr)
+        print(p2.group(1))
+        keyWord = p2.group(1)
+    if keyWord == "databases":
+        myShowDatabases()
+    elif keyWord == "TABLE":
+        myShowtable(tableName=abcObject)
+    elif keyWord == "INDEX":
+        myShowIndex()
+    elif keyWord == "INDEX":
+        myShowView()
+
+
+
 
 
 # 如果当前选中了数据库 那么currentDatabase 肯定不为空 用于创建数据表的时候进行验证
@@ -160,6 +223,13 @@ def myDDLFunction(currentIndex: int, DDl: str, target: str, tokens):
             print("USER")
         elif target.upper() == "VIEW":
             print("VIEW")
+            tempList = view.createView(tokens)
+            mapOfView[tempList[0]] = tempList[1]
+            print(mapOfView)
+
+def checkAuthority(user: str, operation: str):
+    print("checkAuthority")
+    pass
 
 
 # 只能是 insert delete update select
@@ -167,16 +237,20 @@ def myDMLFunction(currentIndex, tokens):
     if not checkCurrentDatabase():
         print("请先选择数据库")
         return
-    if afterParseSqlTokens[currentIndex].value.upper() == "INSERT":
+    #  operation 只能是 insert delete update select
+    operation = afterParseSqlTokens[currentIndex].value.upper()
+    # checkAuthority()
+
+    if operation == "INSERT":
         # print("Insert")
         Table.tableInsert(currentDatabase, tokens)
-    elif afterParseSqlTokens[currentIndex].value.upper() == "DELETE":
+    elif operation == "DELETE":
         Table.tableDelete(currentDatabase, tokens)
         # print("DELETE")
-    elif afterParseSqlTokens[currentIndex].value.upper() == "UPDATE":
+    elif operation == "UPDATE":
         Table.tableUpdate(currentDatabase, tokens)
         # print("update")
-    elif afterParseSqlTokens[currentIndex].value.upper() == "SELECT":
+    elif operation == "SELECT":
         # print("Select")
         Table.tableSelect(currentDatabase, tokens)
 
@@ -185,9 +259,9 @@ if __name__ == "__main__":
     pd.set_option('display.max_rows', None)  # 显示所有列
     pd.set_option('display.max_columns', None)
     # 登录验证 如果用户名和密码错误 无法进入系统
-    # while True:
-    #     if login():
-    #         break
+    while True:
+        if login():
+            break
     # 成功通过验证进入系统  进入默认的命令行界面
     while True:
         afterJoinSqlSentence = getASentence()  # 每次获取一个sql语句
@@ -215,10 +289,7 @@ if __name__ == "__main__":
                     tempName = afterParseSqlTokens[index].value
                     mySelectDatabase(tempName)
                 if afterParseSqlTokens[index].value.upper() == "SHOW":
-                    while str(afterParseSqlTokens[index].ttype) != "None":  # 后边一定跟着 要使用的数据库名字
-                        index += 1
-                        # print(afterParseSqlTokens[index].value)
-                    myShowDatabases()
+                    myShowFunction(tokens=afterParseSqlTokens)
             if str(afterParseSqlTokens[index].ttype) == "Token.Keyword.DML":  # 说明是 SELECT、UPDATE、INSERT、DELETE
                 myDMLFunction(index, afterParseSqlTokens)
                 break

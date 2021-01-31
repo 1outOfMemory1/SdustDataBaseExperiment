@@ -78,9 +78,12 @@ def str2TableClass(tempStr: str, tableName: str):
         columnNameArray.append(arrayAA[0])
         columnDataTypeArray.append(arrayAA[1])
 
+    uniqueKeyList = uniqueKey.strip().split(",")
+    uniqueKey = myConcat(uniqueKeyList, ",")
     # myConcat是自己写的函数  将notNull的column拼接起来  形如 school,home
     notNullColumnStr = myConcat(notNullColumn, ",")
-    notNullColumnStr += "," + primaryKey  # 加上主键也不能为空
+    notNullColumnStr += "," + primaryKey + "," +uniqueKey # 加上主键也不能为空
+
     # 拼接成形如 id#int,name#varchar,age#int,school#varchar,home#varchar,aad#varchar 的字符串
     # 前边是 字段名称 后边是字段类型 两者用#分割 不同字段之间用, 分割
     temp = ""
@@ -93,7 +96,7 @@ def str2TableClass(tempStr: str, tableName: str):
     tableTemp = Table(tableName=tableName,
                       createTime=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
                       lastModifyTime=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
-                      owner="张三", rowNumber=0, columnNumber=columnCount,
+                      owner="root", rowNumber=0, columnNumber=columnCount,
                       primaryKey=primaryKey, uniqueKey=uniqueKey, foreignKey=foreignKey,
                       notNullColumn=notNullColumnStr, indexColumn="", columnDataType=columnDataTypeArrayStr)
     #  将一些信息存入类中 后边还会用
@@ -123,7 +126,6 @@ def tableInit(databaseLocation: str, databaseName: str, currentIndex: int, token
     attributeDf = pd.DataFrame({s1.name: s1, s2.name: s2, s3.name: s3, s4.name: s4})  # 插入4列
     attributeDf = attributeDf.set_index("index")  # 设置索引
     dataDf = pd.DataFrame(columns=initTableAttributeObject.columnNameArray)
-
     # 将内容写回excel表格
     attributeDf.to_excel(writer, sheet_name="attribute")
     dataDf.to_excel(writer, sheet_name="data", index=False)
@@ -132,14 +134,36 @@ def tableInit(databaseLocation: str, databaseName: str, currentIndex: int, token
     return tableName  # 返回创建表的名字
 
 
+def checkSafety(attributeDf, dataDf,  aa: list, dic):
+    primaryKeyList: list = attributeDf["value"].at[6].strip().split(",")
+    uniqueKeyList: list = attributeDf["value"].at[7].strip().split(",")
+    notNullStrArray: list = attributeDf["value"].at[9].strip().split(",")
+    error: str = ""
+    # 检查 非空约束 primary key
+    # print(notNullStrArray)
+    for ele in notNullStrArray:
+        if ele not in aa:
+            # print("字段 " + ele + " 不能为空，插入失败")
+            return "字段 " + ele + " 不能为空，插入失败"
+    # 主键不能重复
+    for ele in primaryKeyList:
+        dataDf = dataDf.loc[dataDf[ele].apply(lambda xx: str(xx) == dic[ele])]
+    # print(dataDf)
+    if dataDf.empty is False:
+        # print("主键重复，请重试")
+        return "主键重复，请重试"
+    return error
+    # 唯一键不能重复
+    # for ele in uniqueKeyList:
+    #     temp = dataDf.loc[dataDf[ele].apply(lambda xx: str(xx) == dic[ele])]
+
+
 # 这个函数是进行完整性校验无误后 将数据写入到excel表中  tableInsert会调用
 def judgeAndInsert(src: str, aa: list, bb: list, all: list):
     # 注意这里的地址 还是相对于main.py 这个文件而言的  而不是相对于 本文件Table.py
     # print(aa)
     # print(bb)
     # aa 是需要插入列表字段列表  bb是值
-
-
     writer = pd.ExcelWriter(src)
     dic = {}
     for index, ele in enumerate(bb):
@@ -149,15 +173,10 @@ def judgeAndInsert(src: str, aa: list, bb: list, all: list):
     dataDf = pd.read_excel(writer, sheet_name="data", usecols=all)
     #  print(dataDf)
 
-    notNullStrArray:list = attributeDf["value"].at[9].strip().split(",")
-    print(notNullStrArray)
-    # for ele in notNullStrArray:
-    #     if ele not in aa.:
-
-
-
-
-
+    error = checkSafety(attributeDf, dataDf, aa, dic)
+    if error != "":
+        print(error)
+        return
 
     dataDf = dataDf.append(dic, ignore_index=True)
     attributeDf["value"].at[2] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())  # 更新时间
@@ -171,9 +190,9 @@ def judgeAndInsert(src: str, aa: list, bb: list, all: list):
 
 # 提取关键词 比如  id > 20  key是 id  algebraicSymbol 是 > 20是 value
 def getDataframeByRequirement(key, value, algebraicSymbol, dataframe: pd.DataFrame):
-    print(key)
-    print(value)
-    print(algebraicSymbol)
+    #print(key)
+    #print(value)
+    #print(algebraicSymbol)
     tempDataFrame = None
     if algebraicSymbol == ">":
         tempDataFrame = dataframe.loc[dataframe[key].apply(lambda xx: xx > int(value))]
@@ -324,12 +343,12 @@ def handleDeleteInExcel(src: str, whereStr: str):
         dataDf.drop(dataDf.index, inplace=True)  # 删除所有数据
         attributeDf["value"].at[4] = 0  # 把rowNumber数据行改成0 代表里面没有数据
     else:
-        print(whereStr)
+        # print(whereStr)
         # 提取出关键信息 进行筛选
         tempDf = parseWhereGetDf(src=src, whereStr=whereStr)
         # print(dataDf)
         print("删除了{}行".format(len(tempDf)))
-        print(tempDf)
+        # print(tempDf)
         dataDf = dataDf.append(tempDf)
         dataDf = dataDf.drop_duplicates(subset=dataDf.columns, keep=False)
         # print(dataDf)
@@ -347,7 +366,7 @@ def tableDelete(currentDatabase: str, token):
     tokenStr = ""  # 直接提取出来所有的sql指令  进行正则匹配
     for ele in token:
         tokenStr += ele.normalized
-    print(tokenStr)
+    # print(tokenStr)
 
     # 去除多余的空格
     tokenStr = re.sub(r" +", " ", tokenStr)
@@ -377,7 +396,7 @@ def tableDelete(currentDatabase: str, token):
 
 # 处理orderby字句的   order by id asc, name desc;  返回列表如右侧  [['id', 'name'], [True, False]]
 def getListOfOrderBy(orderByStr: str):
-    print(orderByStr)
+    # print(orderByStr)
     orderByKeyList = []
     orderByValueList = []
     tempArray1 = orderByStr.split(",")
@@ -401,7 +420,8 @@ def tableSelect(currentDatabase: str, token):
     src: str = ""
     whereStr: str = ""
     orderByList = None
-
+    columnStr = ""
+    columnStrList = []
     # 处理 order by语句
     if "ORDER BY" in tokenStr:
         p3 = re.search("ORDER BY (.*)", tokenStr)
@@ -409,34 +429,42 @@ def tableSelect(currentDatabase: str, token):
         # print(p3.group(1))
         orderByStr = p3.group(1).strip()
         orderByList = getListOfOrderBy(orderByStr)
-        print(orderByList)
+        # print(orderByList)
         tokenStr = re.sub(r" ORDER BY (.*)", "", tokenStr)
     # 正则区分出表名
     if "where" not in tokenStr:
         p1 = re.search(r'SELECT (.*?) FROM (.*)', tokenStr)
         # print(p1.group(0))  # SELECT * FROM student
         # print(p1.group(1))  # *
+        columnStr = p1.group(1)
+
         # print(p1.group(2))  # student
         tableName = p1.group(2)
     else:
         p2 = re.search(r'SELECT (.*?) FROM (.*?) where (.*)', tokenStr)
         # print(p2.group(0))  # SELECT * FROM student where sno< 20 and sno > 5 and sno >=10 and  sno > 17 or sno < 12
         # print(p2.group(1))  # *
+        columnStr = p2.group(1)
         # print(p2.group(2))  # student
         # print(p2.group(3))  # sno< 20 and sno > 5 and sno >=10 and  sno > 17 or sno < 12
         tableName = p2.group(2)
         whereStr = p2.group(3)
+    # 拿到要显示的字段列表
+    if columnStr != "*":
+        for ele in columnStr.split(","):
+            columnStrList.append(ele.strip())
+        # print(columnStrList)
     src = "databases/" + currentDatabase.upper() + "/" + tableName + ".xlsx"
     targetDataframe = parseWhereGetDf(src, whereStr)
 
     if orderByList is not None:
         targetDataframe.sort_values(by=orderByList[0], inplace=True, ascending=orderByList[1])
-    print(targetDataframe)
+    print(targetDataframe[columnStrList if columnStr!="*" else targetDataframe.columns])
 
 
 # name=姓名测试,id=1
 def getListOfUpdateSet(updateStr: str):
-    print(updateStr)
+    # print(updateStr)
     updateKeyList = []
     updateValueList = []
     tempArray1 = updateStr.split(",")
@@ -452,7 +480,7 @@ def handleUpdateInExcel(src: str, whereStr: str, modifyStr: str):
     attributeDf = pd.read_excel(writer, sheet_name="attribute")
     #  先删除然后再插入
     tempDataframe: pd.DataFrame = parseWhereGetDf(src, whereStr)
-    print(tempDataframe)
+    # print(tempDataframe)
     handleDeleteInExcel(src, whereStr)  # 需要进行删完再读
     dataDf: pd.DataFrame = pd.read_excel(writer, sheet_name="data")
     updateList = getListOfUpdateSet(modifyStr)
@@ -461,15 +489,22 @@ def handleUpdateInExcel(src: str, whereStr: str, modifyStr: str):
     primaryKeyList = primaryKeyStr.strip().split(",")
     for index, ele in enumerate(primaryKeyList):
         primaryKeyList[index] = ele.strip()
-
+    backUpTempDataframe = tempDataframe.copy(deep=True)
     # print(primaryKeyList)  # 主键的列表
     for index, ele in enumerate(updateList[0]):
         tempDataframe[ele] = updateList[1][index]
-    # print(tempDataframe)
-
-    dataDf = dataDf.append(tempDataframe)  # 取并集
-    dataDf.sort_values(by=primaryKeyList)
-    print(dataDf)
+    dataTempDf = pd.concat([tempDataframe, dataDf], join="outer", ignore_index=True)  # 取并集
+    dataTempDf.to_excel("./temp.xlsx", index=False)
+    dataTempDf = pd.read_excel("./temp.xlsx")
+    flag = dataTempDf[primaryKeyList].duplicated()
+    # 判断是否主键是否重复 如果重复 拒绝修改
+    if flag.any() == True:
+        print("主键重复 更新失败")
+        dataDf = dataDf.append(backUpTempDataframe)
+    else:
+        print("更新成功")
+        dataDf = dataTempDf
+    dataDf.sort_values(by=primaryKeyList) # 重新排序
     attributeDf.to_excel(writer, sheet_name="attribute", index=False)
     dataDf.to_excel(writer, sheet_name="data", index=False)
     writer.save()
@@ -504,9 +539,6 @@ def tableUpdate(currentDatabase: str, token):
         # print(p1.group(3))  # age=30
         whereStr = p1.group(3).strip()
     src = "databases/" + currentDatabase.upper() + "/" + tableName + ".xlsx"
-    print(tableName)
-    print(modifyStr)
-    print(whereStr)
     handleUpdateInExcel(src, whereStr, modifyStr)
 
 

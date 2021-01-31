@@ -1,5 +1,6 @@
 import pandas as pd
 import re
+import numpy as np
 #
 #
 #
@@ -103,11 +104,21 @@ import re
 #  != = > >= < <=
 
 
-strTemp = "SELECT * FROM student where sno< 20 and sno > 5 and sno >=10 and  sno > 17 or sno < 12 order   by   sno    asc,name    desc"
-strTemp = re.sub(r" +", " ", strTemp)
-p3 = re.search(" order by (.*)", strTemp)
-print(p3.group(0))
-print(p3.group(1))
-strTemp = re.sub(r" order by (.*)", "", strTemp)
-print(strTemp)
+# strTemp = "SELECT * FROM student where sno< 20 and sno > 5 and sno >=10 and  sno > 17 or sno < 12 order   by   sno    asc,name    desc"
+# strTemp = re.sub(r" +", " ", strTemp)
+# p3 = re.search(" order by (.*)", strTemp)
+# print(p3.group(0))
+# print(p3.group(1))
+# strTemp = re.sub(r" order by (.*)", "", strTemp)
+# print(strTemp)
 
+src = "../databases/ABC/student.xlsx"
+dataDf = pd.read_excel(src, sheet_name="data")
+dic = {"sno": 2011, "sname": "张三", "home": "山东"}
+primaryKeyList = ["sno", "sname"]
+tempDf = dataDf
+# for i in range(0, len(dataDf)) :
+#     tempDf =
+for ele in primaryKeyList:
+    tempDf = tempDf.loc[tempDf[ele].apply(lambda xx:  xx == dic[ele])]
+print(tempDf)

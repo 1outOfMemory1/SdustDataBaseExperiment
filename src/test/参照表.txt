@@ -9,7 +9,6 @@ DDL主要是用在定义或改变表（TABLE）的结构，数据类型，表之
 create 后边可能的参数只能是
 database  、table 、 user 、view 、 function、 trigger 、 procedure
 
-
 2.Token.Keyword
 show  use   grant    from  AND
 

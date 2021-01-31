@@ -32,8 +32,13 @@ import pandas as pd
 # print(array[1])
 
 
-df1 = pd.DataFrame([[1,11,111],[2,22,222],[3,33,333]],columns=['id','data','comment'])
-df2 = pd.DataFrame([[0,00,000],[1,11,111],[2,22,222],[4,44,444]],columns=['id','data','comment'])
-union_result = pd.merge(df1, df2, how='outer')
-union_result = pd.merge(df1, union_result, how='outer')
-print(union_result)
+# df1 = pd.DataFrame([[1,11,111],[2,22,222],[3,33,333]],columns=['id','data','comment'])
+# df2 = pd.DataFrame([[0,00,000],[1,11,111],[2,22,222],[4,44,444]],columns=['id','data','comment'])
+# union_result = pd.merge(df1, df2, how='outer')
+# union_result = pd.merge(df1, union_result, how='outer')
+# print(union_result)
+
+
+tempArray = ["aa", "bb", "cc"]
+if "aa" in tempArray:
+    print("dasfasdfdas")
